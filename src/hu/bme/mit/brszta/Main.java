@@ -1,8 +1,17 @@
-package hu.bme.mit.brszta;
+public class Main implements Runnable{
 
-public class Main {
+    GUI gui=new GUI();
 
     public static void main(String[] args) {
-	// write your code here
+        new Thread(new Main()).start();
+    }
+
+    @Override
+    public void run() {
+        while(true){
+            gui.repaint();
+        }
+
     }
 }
+
