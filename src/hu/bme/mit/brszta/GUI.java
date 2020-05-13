@@ -1,5 +1,3 @@
-import org.json.JSONException;
-
 import javax.swing.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -10,8 +8,8 @@ import  java.awt.*;
 
 public class GUI extends JFrame{
 
-    private Server server;
-    private Client client;
+
+    private multiPlayer multiPlayer;
 
     int spacing=2;
 
@@ -77,6 +75,13 @@ public class GUI extends JFrame{
     }
 
     public class IBoard extends JPanel{
+
+        public IBoard(){
+            
+        }
+
+
+
         public void paintComponent(Graphics g) {
 
             g.setColor(Color.gray);
@@ -251,9 +256,11 @@ public class GUI extends JFrame{
                         reset();
                     } else {
 
-        //ADAT küldés:
-                        server.writeIntCells(true,nx,ny);
+
                         if (nx != -1 && ny != -1 && (!revealed[nx][ny]) && (!flags[nx][ny])) {
+
+    //ADAT küldés:
+                            multiPlayer.writeMyCells(true,nx,ny);
                             revealed[nx][ny] = true;
                             numofrev++;
                             if (neighbours[nx][ny] == 0) {
@@ -297,7 +304,7 @@ public class GUI extends JFrame{
 
  ///ADAdat küldés:
 
-                    server.writeIntCells(false,nx,ny);
+                    multiPlayer.writeMyCells(false,nx,ny);
 
 
                     if (flags[nx][ny]) {
@@ -353,16 +360,22 @@ public class GUI extends JFrame{
         }
         return -1;
     }
+
+
+
+
+
     public void getButton(int x, int y) {
         if(y>=GUIheight/2-45+26 && y<= GUIheight/2-45+30+26 && x>=GUIwidth/2-50 && x<= GUIwidth/2-50+100){
-//Először kell hogy lefusson, ez hozza létre magát a szervert
-            server = new Server();
+            setTitle("Aknakereső 1.Player.");//Először kell hogy lefusson, ez hozza létre magát a szervert
+            multiPlayer = new multiPlayer(true);
+
 
 //Aztán itt a szerver várja a külső klinest. Ha csatlakozott
 // létrehozzuk az adatkapcsolatokat és azonnal átküldjük
 // a Board osztályt, aminek a konstruktorához kell mines bool mátrix
 // Itt azonnal elindul a lépés adatok fogadása LÁSD LENT:client.requistingData()
-            server.acceptConnection(mines);
+            multiPlayer.acceptConnection(mines);
 
             //Ezek csak az óra indítása
             select = true;
@@ -375,18 +388,21 @@ public class GUI extends JFrame{
 
 // Aztán a példányt hozzá kell adni a listához amiket értesíteni
 // kell ha az esemény bekövetkezik
-            server.addReceiveListener(oclick);
+            multiPlayer.addReceiveListener(oclick);
 
         }
         if(y>=GUIheight/2+26 && y<= GUIheight/2+30+26 && x>=GUIwidth/2-50 && x<= GUIwidth/2-50+100){
 
+setTitle("Aknakereső 2.Player.");
+
+
 //Másik oldalon ez fut le, ez hozza létre a klienst
-            client = new Client();
+            multiPlayer = new multiPlayer(false);
 
 //Itt kérjük hogy csatlakozzon a host: tehát ip cim, ill. port
 // ismeretében a szerverhez. Az acceptConnection() először
 // addig vár míg ez meg nem történik. MAjd létrehozza a kliens oldali adatkapcsolatot is
-            client.requestConnection("localhost",51734);
+            multiPlayer.requestConnection("localhost",51734);
 
             //Ezek csak az óra indítása
             select = true;
@@ -394,14 +410,14 @@ public class GUI extends JFrame{
 
 //Ua mint fent
             opponentClick oclick = new opponentClick();
-            client.addReceiveListener(oclick);
+            multiPlayer.addReceiveListener(oclick);
 
 //Ez visszaadja a Boardot
-            boolean[][] board = client.getBoard();
+            boolean[][] board = multiPlayer.getBoard();
 
 //Ha megkaptuk a boardot készen állunk a lépés adatok fogadására
 // ezt a getBoard után kell mivel addig a board bejövő adatait is lépésnek veheti a program
-            client.requestingData();
+            multiPlayer.requestingData();
         }
 
     }
@@ -537,5 +553,6 @@ public class GUI extends JFrame{
 
         }
     }
+
 
 }
