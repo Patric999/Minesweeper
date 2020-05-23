@@ -1,3 +1,5 @@
+package hu.bme.mit.brszta;
+
 import javax.swing.*;
 import java.io.*;
 import java.net.ServerSocket;
@@ -14,6 +16,7 @@ public class multiPlayer{
     private ServerSideConnection player1;
     private ClientSideConnection player2;
     public List<ReceiveListener> listeners;
+    private boolean clientconnectioning=true;
 
     public multiPlayer(boolean isServer){
         this.isServer =isServer;
@@ -61,9 +64,28 @@ public class multiPlayer{
         }
     }
 
+
+    public void interuptConnection()
+    {
+        if (isServer) {
+            try {
+
+                serverSocket.close();
+            }catch (IOException ex){
+                System.out.println("Server connecton close ex");
+            }
+        }
+        else
+        {
+           clientconnectioning=false;
+        }
+    }
+
+
+
     public void requestingData() {
-            Thread t = new Thread(player2);
-            t.start();
+        Thread t = new Thread(player2);
+        t.start();
 
     }
 
@@ -75,31 +97,37 @@ public class multiPlayer{
 
 
     public void acceptConnection(boolean[][] mines) {
-         try {
-                System.out.println("Waiting for connections....");
-                while (numplayers < 2) {
-                    Object cancel = "Mégse";
-                    JOptionPane.showMessageDialog(null, "Várakozás a másik játékosra...", "Kapcsolódás", JOptionPane.INFORMATION_MESSAGE);
-                    Socket socket = serverSocket.accept();
-                    numplayers++;
-                    System.out.println("Player" + numplayers + ". has connected");
-                    player1 = new ServerSideConnection(socket, mines);
-                    Thread t = new Thread(player1);
-                    t.start();
+        try {
 
-                }
-                System.out.println("Max num of players. No longer accepting connections.");
-            } catch (IOException ex) {
-                System.out.println("Exception from acceptConnecton()");
+            System.out.println("Waiting for connections....");
+
+
+            while (numplayers < 2) {
+                System.out.println("accept");
+                Socket socket = serverSocket.accept();
+                numplayers++;
+                System.out.println("Player" + numplayers + ". has connected");
+                player1 = new ServerSideConnection(socket, mines);
+                Thread t = new Thread(player1);
+                t.start();
+
             }
+
+            System.out.println("Max num of players. No longer accepting connections.");
+
+        } catch (Exception ex) {
+
+            System.out.println("Exception from acceptConnecton()");
+
+        }
     }
     public void requestConnection(String host,int port){
 
-            System.out.println("----Client-----");
-            try
-            {
+        System.out.println("----Client-----");
+        while (clientconnectioning){
+            try {
 
-                socket = new Socket(host,port);
+                socket = new Socket(host, port);
                 player2 = new ClientSideConnection(socket);
 
             }
@@ -107,6 +135,8 @@ public class multiPlayer{
             {
                 System.out.println("Exception from client side connection constructor");
             }
+        }
+        clientconnectioning=true;
 
     }
     private static class ServerSideConnection implements Runnable{
@@ -179,16 +209,16 @@ public class multiPlayer{
         public void sendBoard(boolean[][] mines){
             try {
 
-                Board board = new Board(mines);
-                for (int i = 0; i < mines.length; i++) {
-                    for (int j = 0; j < mines[i].length; j++) {
-                        if (mines[i][j])
-                            System.out.print("1");
-                        else
-                            System.out.print("0");
-                    }
-                    System.out.println();
-                }
+                SendBoard board = new SendBoard(mines);
+//                for (int i = 0; i < mines.length; i++) {
+//                    for (int j = 0; j < mines[i].length; j++) {
+//                        if (mines[i][j])
+//                            System.out.print("1");
+//                        else
+//                            System.out.print("0");
+//                    }
+//                    System.out.println();
+//                }
                 objOut.writeObject(board);
 
             } catch (IOException e) {
@@ -274,7 +304,7 @@ public class multiPlayer{
             boolean[][] board = new boolean[0][];
             try {
 
-                Board inBoard = (Board)objIn.readObject();
+                SendBoard inBoard = (SendBoard)objIn.readObject();
                 board = inBoard.getBoard();
 
                 for (int i = 0; i < board.length; i++) {
