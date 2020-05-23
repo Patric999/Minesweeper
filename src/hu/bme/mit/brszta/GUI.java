@@ -9,7 +9,10 @@ import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.net.InetAddress;
 import java.util.*;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 public class GUI { //contains all the classes necessary to build the GUI
 
@@ -147,9 +150,9 @@ public class GUI { //contains all the classes necessary to build the GUI
             dialog.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent e) {
+                    multiPlayer.interuptConnection();
                     mySwingWorker.cancel(true);
                     super.windowClosing(e);
-                    multiPlayer.interuptConnection();
                     connected=false;
                 }
             });
@@ -162,9 +165,8 @@ public class GUI { //contains all the classes necessary to build the GUI
             cancelBtn.setBounds(110,70,80,30);
             cancelBtn.addActionListener(e -> {
                 dialog.dispose();
-                mySwingWorker.cancel(true);
                 multiPlayer.interuptConnection();
-
+                mySwingWorker.cancel(true);
                 connected=false;
             });
             panel.add(cancelBtn);
@@ -182,6 +184,12 @@ public class GUI { //contains all the classes necessary to build the GUI
             dialog.setSize(300,150);
             dialog.setResizable(false);
             dialog.setVisible(true);
+
+
+
+
+
+
             return connected;
 
         }
@@ -500,8 +508,11 @@ public class GUI { //contains all the classes necessary to build the GUI
 
 
             JLabel label_connection = new JLabel("Host IP: ");
-            IP_address = new JTextField("192.168.0.123");//////////////////////////////////////////////////////////////////////////////////////////////
-
+            try {
+                IP_address = new JTextField(InetAddress.getLocalHost().getHostAddress());
+            } catch (UnknownHostException ex) {
+                ex.printStackTrace();
+            }
 
             JButton button = new JButton("New Game");
 
@@ -591,7 +602,15 @@ public class GUI { //contains all the classes necessary to build the GUI
                     difficulties_medium.setEnabled(true);
                     difficulties_hard.setEnabled(true);
                     IP_address.setEditable(false);
+
+                    try {
+                        IP_address.setText(InetAddress.getLocalHost().getHostAddress());
+                    } catch (UnknownHostException ex) {
+                        ex.printStackTrace();
+                    }
+
                 }
+
                 if(modes.getSelection().getActionCommand().equals("single")) {
                     host.setEnabled(false);
                     guest.setEnabled(false);

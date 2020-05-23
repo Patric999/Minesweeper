@@ -1,13 +1,12 @@
 package hu.bme.mit.brszta;
 
-import javax.swing.*;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
-public class multiPlayer{
+public class multiPlayer {
 
     boolean isServer;
     private ServerSocket serverSocket;
@@ -16,7 +15,7 @@ public class multiPlayer{
     private ServerSideConnection player1;
     private ClientSideConnection player2;
     public List<ReceiveListener> listeners;
-    private boolean clientconnectioning=true;
+    private boolean clientconnecting=true;
 
     public multiPlayer(boolean isServer){
         this.isServer =isServer;
@@ -75,12 +74,10 @@ public class multiPlayer{
                 System.out.println("Server connecton close ex");
             }
         }
-        else
-        {
-           clientconnectioning=false;
+        else{
+            clientconnecting=false;
         }
     }
-
 
 
     public void requestingData() {
@@ -124,11 +121,12 @@ public class multiPlayer{
     public void requestConnection(String host,int port){
 
         System.out.println("----Client-----");
-        while (clientconnectioning){
+        while (clientconnecting){
             try {
 
                 socket = new Socket(host, port);
                 player2 = new ClientSideConnection(socket);
+                break;
 
             }
             catch (IOException ex)
@@ -136,7 +134,7 @@ public class multiPlayer{
                 System.out.println("Exception from client side connection constructor");
             }
         }
-        clientconnectioning=true;
+        clientconnecting=true;
 
     }
     private static class ServerSideConnection implements Runnable{
