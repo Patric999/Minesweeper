@@ -6,27 +6,27 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
-public class multiPlayer {
+/**
+ * Class containing all network-related functionality.
+ */
+public class NetworkConnection {
 
     boolean isServer;
     private ServerSocket serverSocket;
     private Socket socket;
     private int numplayers;
-    private ServerSideConnection player1;
-    private ClientSideConnection player2;
+    private HostSideConnection player1;
+    private GuestSideConnection player2;
     public List<ReceiveListener> listeners;
     private boolean clientconnecting=true;
 
-    public multiPlayer(boolean isServer){
+    public NetworkConnection(boolean isServer){
         this.isServer =isServer;
         this.listeners = new ArrayList<>();
 
         if(this.isServer){
-
             System.out.println("-----Game Server-----");
-
             this.numplayers = 1;
 
             try
@@ -37,12 +37,14 @@ public class multiPlayer {
             {
                 System.out.println("Exception from constructor");
             }
-
         }
-
     }
 
 
+    /**
+     * Connect Click event listener to this network connection.
+     * @param listener
+     */
     public void addReceiveListener(ReceiveListener listener)
     {
         listeners.add(listener);
@@ -55,7 +57,7 @@ public class multiPlayer {
         }
     }
 
-    public void writeMyCells(boolean isLeft, int myX,int myY){
+    public void sendClick(boolean isLeft, int myX, int myY){
         if (isServer) {
             player1.writeIntData(isLeft, myX, myY);
         }
@@ -65,15 +67,13 @@ public class multiPlayer {
         }
     }
 
-
-    public void interuptConnection()
+    public void interruptConnection()
     {
         if (isServer) {
             try {
-
                 serverSocket.close();
             }catch (IOException ex){
-                System.out.println("Server connecton close ex");
+                System.out.println("Server connection close ex");
             }
         }
         else{
@@ -88,56 +88,60 @@ public class multiPlayer {
 
     }
 
-    public boolean[][] getBoard(){
+    /**
+     * Receive board initializer matrix from the host.
+     * @return BoardInitMatrix
+     * @see BoardInitMatrix
+     * @see BoardBuilder
+     */
+    public boolean[][] getBoardInitMatrix(){
         return player2.getObjIn();
     }
 
-
-
-
-    public boolean acceptConnection(boolean[][] mines) {
-
+    /**
+     * Set up connection from the server side, and immediately send the board initializer matrix.
+     * @param booleanMatrix : board initializer matrix
+     * @see BoardInitMatrix
+     * @see BoardBuilder
+     * @return
+     */
+    public boolean acceptConnection(boolean[][] booleanMatrix) {
         boolean connected=false;
-
         try {
-
             System.out.println("Waiting for connections....");
-
-
             while (numplayers < 2) {
                 Socket socket = serverSocket.accept();
                 numplayers++;
                 System.out.println("Player" + numplayers + ". has connected");
-                player1 = new ServerSideConnection(socket, mines);
+                player1 = new HostSideConnection(socket, booleanMatrix);
                 Thread t = new Thread(player1);
                 t.start();
-                System.out.println(connected);
-
+                connected=true;
             }
-
-            System.out.println("Max num of players. No longer accepting connections.");
+            System.out.println("Maximum number of players. No longer accepting connections.");
 
         } catch (Exception ex) {
             connected=false;
-            JOptionPane.showMessageDialog(null, "Hiba a szerver létesítése során ellenőrizze a beállításokat!", "Hiba", JOptionPane.ERROR_MESSAGE);
-            System.out.println("Exception from acceptConnecton()");
-
+            System.out.println("Exception from acceptConnection()");
         }
         return connected;
     }
-    public boolean requestConnection(String host,int port){
 
+    /**
+     * Attempt connecting to the given host.
+     * @param hostAddress
+     * @param port
+     * @return
+     */
+    public boolean requestConnection(String hostAddress, int port){
         boolean connected=false;
-
         System.out.println("----Client-----");
         while (clientconnecting){
             try {
-
-                socket = new Socket(host, port);
-                player2 = new ClientSideConnection(socket);
+                socket = new Socket(hostAddress, port);
+                player2 = new GuestSideConnection(socket);
                 connected=true;
                 break;
-
             }
             catch (IOException ex)
             {
@@ -146,20 +150,24 @@ public class multiPlayer {
             }
         }
         clientconnecting=true;
-
         return connected;
     }
-    private static class ServerSideConnection implements Runnable{
+
+
+    /**
+     * Host side communication.
+     * Send board init matrix, listen to incoming click events, send outgoing click events.
+     */
+    private static class HostSideConnection implements Runnable{
         private Socket socket;
         private DataInputStream dataIn;
         private DataOutputStream dataOut;
         private ObjectOutputStream objOut;
         private ObjectInputStream objIn;
         private List<ReceiveListener> listeners;
-        public ServerSideConnection(Socket s,boolean[][] mines)
+        public HostSideConnection(Socket s, boolean[][] mines)
         {
             socket=s;
-
             try
             {
                 dataIn = new DataInputStream(socket.getInputStream());
@@ -194,6 +202,7 @@ public class multiPlayer {
             }
             catch (IOException ex)
             {
+                JOptionPane.showMessageDialog(null,"A kapcsolat megszakadt próbáld újra","Hiba",JOptionPane.ERROR_MESSAGE);
                 System.out.println("Exception from run() ");
             }
         }
@@ -219,38 +228,30 @@ public class multiPlayer {
         public void sendBoard(boolean[][] mines){
             try {
 
-                SendBoard board = new SendBoard(mines);
-//                for (int i = 0; i < mines.length; i++) {
-//                    for (int j = 0; j < mines[i].length; j++) {
-//                        if (mines[i][j])
-//                            System.out.print("1");
-//                        else
-//                            System.out.print("0");
-//                    }
-//                    System.out.println();
-//                }
+                BoardInitMatrix board = new BoardInitMatrix(mines);
                 objOut.writeObject(board);
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-
         }
     }
 
 
-    private static class ClientSideConnection implements Runnable {
+    /**
+     * Guest side communication.
+     * Receive board init matrix, listen to incoming click events, send outgoing click events.
+     */
+    private static class GuestSideConnection implements Runnable {
         private Socket socket;
         private DataInputStream dataIn;
         private DataOutputStream dataOut;
         private ObjectInputStream objIn;
         private List<ReceiveListener> listeners;
 
-        public ClientSideConnection(Socket s)
+        public GuestSideConnection(Socket s)
         {
             socket=s;
-
             try
             {
                 dataIn = new DataInputStream(socket.getInputStream());
@@ -267,10 +268,8 @@ public class multiPlayer {
         {
             try
             {
-
-                while(true) {
+                while (true) {
                     while (dataIn.available() > 0){
-
                         boolean leftOrRight = dataIn.readBoolean();
                         int oppX = dataIn.readInt();
                         int oppY = dataIn.readInt();
@@ -280,7 +279,6 @@ public class multiPlayer {
                             for (ReceiveListener listener : listeners)
                                 listener.ReceiveData(leftOrRight, oppX, oppY);
                         }
-                        received =false;
                     }
                 }
             }
@@ -306,6 +304,7 @@ public class multiPlayer {
             }
             catch (IOException ex)
             {
+                JOptionPane.showMessageDialog(null,"A kapcsolat megszakadt próbáld újra","Hiba",JOptionPane.ERROR_MESSAGE);
                 System.out.println("Exception from client side write data");
             }
         }
@@ -313,24 +312,14 @@ public class multiPlayer {
         public boolean[][] getObjIn(){
             boolean[][] board = new boolean[0][];
             try {
-
-                SendBoard inBoard = (SendBoard)objIn.readObject();
-                board = inBoard.getBoard();
-
-                for (int i = 0; i < board.length; i++) {
-                    for (int j = 0; j < board[i].length; j++) {
-                        if (board[i][j])
-                            System.out.print("1");
-                        else
-                            System.out.print("0");
-                    }
-                    System.out.println();
-                }
+                BoardInitMatrix inBoard = (BoardInitMatrix)objIn.readObject();
+                board = inBoard.getMatrix();
+                System.out.print("Received the BoardInitMatrix.\n\n");
             } catch (IOException | ClassNotFoundException e) {
+                JOptionPane.showMessageDialog(null,"Az adatok fogadása nem lehetséges, próbáld újra.","Hiba",JOptionPane.ERROR_MESSAGE);
                 e.printStackTrace();
             }
             return board;
         }
     }
-
 }
